@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>伪3D卡片 + 实时时间戳</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f2f2f2;
+      font-family: "Arial", sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .tilt-card {
+      width: 300px;
+      height: 400px;
+      background: url('https://i.imgur.com/RzY5yJY.png') center/cover no-repeat;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+    }
+
+    .timestamp {
+      font-size: 18px;
+      color: #333;
+    }
+
+    .btn-request {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="tilt-card" data-tilt data-gyroscope="true"></div>
+  <div class="timestamp" id="timestamp">加载中...</div>
+
+  <button class="btn-request" id="permissionBtn">点击启用陀螺仪</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.7.2/dist/vanilla-tilt.min.js"></script>
+  <script>
+    // 启用tilt.js
+    VanillaTilt.init(document.querySelectorAll(".tilt-card"), {
+      max: 20,
+      speed: 400,
+      glare: true,
+      "max-glare": 0.2,
+      gyroscope: true,
+    });
+
+    // 时间戳更新
+    function updateTimestamp() {
+      const el = document.getElementById('timestamp');
+      const now = new Date();
+      const timeStr = now.toLocaleString();
+      el.textContent = `当前时间：${timeStr}`;
+    }
+    updateTimestamp();
+    setInterval(updateTimestamp, 1000);
+
+    // iOS 陀螺仪权限处理
+    function requestGyroPermission() {
+      if (
+        typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function'
+      ) {
+        DeviceOrientationEvent.requestPermission()
+          .then(state => {
+            if (state === 'granted') {
+              document.getElementById('permissionBtn').style.display = 'none';
+            }
+          })
+          .catch(console.error);
+      }
+    }
+
+    // 自动检测是否需要权限按钮
+    window.addEventListener('load', () => {
+      if (
+        typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function'
+      ) {
+        document.getElementById('permissionBtn').style.display = 'block';
+      }
+    });
+
+    document.getElementById('permissionBtn').addEventListener('click', requestGyroPermission);
+  </script>
+</body>
+</html>
