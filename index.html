@@ -24,7 +24,6 @@
       height: 420px;
       transform-style: preserve-3d;
       cursor: pointer;
-      z-index: 2;
     }
 
     .tilt-card {
@@ -57,52 +56,50 @@
       opacity: 0.95;
     }
 
+    .watermark {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      max-height: 80px;
+      overflow-y: auto;
+      padding: 6px 10px;
+      font-size: 13px;
+      line-height: 1.4;
+      color: rgba(255, 255, 255, 0.8);
+      font-family: 'KaiTi', serif;
+      pointer-events: none;
+      z-index: 20;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
     .btn-request {
       margin-top: 20px;
       padding: 10px 20px;
       font-size: 16px;
       display: none;
     }
-
-    .nickname-floating {
-      position: absolute;
-      white-space: nowrap;
-      font-size: 18px;
-      font-weight: bold;
-      color: rgba(255,255,255,0.5);
-      text-shadow: 0 0 5px rgba(255,255,255,0.2);
-      pointer-events: auto;
-      animation: fly 8s linear forwards;
-      transform: translateZ(var(--z-depth));
-      z-index: var(--z);
-      transition: all 0.3s ease;
-    }
-
-    .nickname-floating.active {
-      font-size: 36px;
-      color: rgba(255,255,255,0.9);
-      text-shadow: 0 0 10px rgba(0,0,0,0.4);
-    }
-
-    @keyframes fly {
-      from { transform: translateX(-200px) translateZ(var(--z-depth)); opacity: 1; }
-      to { transform: translateX(110vw) translateZ(var(--z-depth)); opacity: 0; }
-    }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
+
   <div class="tilt-wrapper" id="card" data-tilt data-gyroscope="true">
     <div class="tilt-layer">
       <img src="test.png" alt="透明图">
     </div>
     <div class="tilt-card"></div>
+    <div class="watermark" id="watermark">访问者：</div>
   </div>
 
   <button class="btn-request" id="permissionBtn">点击启用陀螺仪</button>
 
+  <!-- Tilt -->
   <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.7.2/dist/vanilla-tilt.min.js"></script>
 
+  <!-- Firebase + 实时监听版本 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
     import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
@@ -124,8 +121,6 @@
 
     const alreadyVisited = localStorage.getItem("visited");
     let nickname = "匿名用户";
-    let globalNames = [];
-    let flying = false;
 
     if (!alreadyVisited) {
       nickname = prompt("请输入你的昵称（限10字以内）")?.trim() || "匿名用户";
@@ -137,52 +132,19 @@
           timestamp: new Date().toISOString()
         });
         localStorage.setItem("visited", "true");
-        requestAnimationFrame(() => {
-          confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
-        });
-        showAllNames();
       }
     }
 
+    // 显示所有访问者
     onValue(visitsRef, (snapshot) => {
       const data = snapshot.val();
       const names = Object.values(data || {}).map(d => d.name);
-      globalNames = [...new Set(names)];
-      showAllNames();
+      const uniqueNames = [...new Set(names)];
+      document.getElementById("watermark").innerText = `访问者：${uniqueNames.join("、")}`;
     });
+  </script>
 
-    function showAllNames() {
-      if (flying) return;
-      flying = true;
-      globalNames.forEach((name, i) => {
-        setTimeout(() => launchFloating(name), i * 800);
-      });
-      setTimeout(() => { flying = false }, globalNames.length * 800 + 2000);
-    }
-
-    function launchFloating(text) {
-      const el = document.createElement("div");
-      el.className = "nickname-floating";
-      el.textContent = text;
-      el.style.top = `${Math.random() * 80 + 10}px`;
-      el.style.left = "-150px";
-      const z = Math.floor(Math.random() * 3 + 1);
-      const zDepth = `${Math.floor(Math.random() * 200 - 100)}px`;
-      el.style.setProperty('--z-depth', zDepth);
-      el.style.setProperty('--z', z);
-
-      el.addEventListener("click", () => {
-        el.classList.add("active");
-        confetti({ particleCount: 100, spread: 60, origin: { y: 0.4 } });
-        setTimeout(() => el.remove(), 2000);
-        // 不单独重飘，整体再跑一次
-        if (!flying) showAllNames();
-      });
-
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 9000);
-    }
-
+  <script>
     VanillaTilt.init(document.querySelectorAll(".tilt-wrapper"), {
       max: 25,
       speed: 400,
@@ -209,18 +171,6 @@
     });
 
     document.getElementById('permissionBtn').addEventListener('click', requestGyroPermission);
-
-    document.getElementById("card").addEventListener("click", () => {
-      if (flying) return;
-      requestAnimationFrame(() => {
-        confetti({
-          particleCount: 100,
-          spread: 80,
-          origin: { y: 0.6 }
-        });
-      });
-      showAllNames();
-    });
   </script>
 </body>
 </html>
