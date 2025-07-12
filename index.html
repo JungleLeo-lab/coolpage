@@ -98,6 +98,7 @@
 
   <!-- Tilt -->
   <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.7.2/dist/vanilla-tilt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <!-- Firebase + 实时监听版本 -->
   <script type="module">
@@ -132,10 +133,16 @@
           timestamp: new Date().toISOString()
         });
         localStorage.setItem("visited", "true");
+
+        // 🎉 撒花效果
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
       }
     }
 
-    // 显示所有访问者
     onValue(visitsRef, (snapshot) => {
       const data = snapshot.val();
       const names = Object.values(data || {}).map(d => d.name);
@@ -171,6 +178,14 @@
     });
 
     document.getElementById('permissionBtn').addEventListener('click', requestGyroPermission);
+
+    document.getElementById("card").addEventListener("click", () => {
+      confetti({
+        particleCount: 60,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+    });
   </script>
 </body>
 </html>
