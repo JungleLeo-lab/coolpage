@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>伪3D卡片 + Confetti + 图片</title>
+  <title>伪3D卡片 + Firebase 实时访客同步</title>
   <style>
     body {
       margin: 0;
@@ -51,16 +51,21 @@
     }
 
     .tilt-layer img {
-      width: 330px;
+      width: 450px;
       height: auto;
       opacity: 0.95;
-      transform: scale(1.0);
     }
 
-    .timestamp {
-      font-size: 18px;
-      color: #333;
-      margin-top: 24px;
+    .watermark {
+      position: absolute;
+      bottom: 10px;
+      width: 100%;
+      text-align: center;
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.5);
+      font-family: 'KaiTi', serif;
+      pointer-events: none;
+      z-index: 20;
     }
 
     .btn-request {
@@ -75,55 +80,72 @@
 
   <div class="tilt-wrapper" id="card" data-tilt data-gyroscope="true">
     <div class="tilt-layer">
-      <img src="test.png" alt="你好AI同学">
+      <img src="test.png" alt="透明图">
     </div>
     <div class="tilt-card"></div>
+    <div class="watermark" id="watermark">访问者：</div>
   </div>
 
-  <div class="timestamp" id="timestamp">加载中...</div>
   <button class="btn-request" id="permissionBtn">点击启用陀螺仪</button>
 
-  <!-- Tilt.js -->
+  <!-- Tilt -->
   <script src="https://cdn.jsdelivr.net/npm/vanilla-tilt@1.7.2/dist/vanilla-tilt.min.js"></script>
 
-  <!-- Confetti.js -->
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Firebase + 实时监听版本 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAC_unPREbfYlRdmOeRih1UjvhFlLeTV-8",
+      authDomain: "d-card-demo.firebaseapp.com",
+      databaseURL: "https://d-card-demo-default-rtdb.firebaseio.com",
+      projectId: "d-card-demo",
+      storageBucket: "d-card-demo.firebasestorage.app",
+      messagingSenderId: "572504051576",
+      appId: "1:572504051576:web:29d2831c380505742bc28d",
+      measurementId: "G-NJPJJTWTMH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const visitsRef = ref(db, "visitors");
+
+    const alreadyVisited = localStorage.getItem("visited");
+    let nickname = "匿名用户";
+
+    if (!alreadyVisited) {
+      nickname = prompt("请输入你的昵称（限10字以内）")?.trim() || "匿名用户";
+      if (nickname.length > 10) {
+        alert("昵称不能超过10个字符！将不计入记录。");
+      } else {
+        push(visitsRef, {
+          name: nickname,
+          timestamp: new Date().toISOString()
+        });
+        localStorage.setItem("visited", "true");
+      }
+    }
+
+    // 显示所有访问者
+    onValue(visitsRef, (snapshot) => {
+      const data = snapshot.val();
+      const names = Object.values(data || {}).map(d => d.name);
+      const uniqueNames = [...new Set(names)];
+      document.getElementById("watermark").innerText = `访问者：${uniqueNames.join("、")}`;
+    });
+  </script>
 
   <script>
-    // 初始化 tilt 效果
     VanillaTilt.init(document.querySelectorAll(".tilt-wrapper"), {
       max: 25,
       speed: 400,
       glare: true,
       "max-glare": 0.5,
       gyroscope: true,
-      gyroscopeMinAngleX: -45,
-      gyroscopeMaxAngleX: 45,
-      gyroscopeMinAngleY: -45,
-      gyroscopeMaxAngleY: 45,
       perspective: 1000,
     });
 
-    // 点击触发 confetti 效果
-    document.getElementById('card').addEventListener('click', () => {
-      confetti({
-        particleCount: 150,
-        spread: 100,
-        origin: { y: 0.6 },
-        colors: ['#a864fd', '#29cdff', '#78ff44', '#ff718d', '#fdff6a']
-      });
-    });
-
-    // 时间戳更新
-    function updateTimestamp() {
-      const el = document.getElementById('timestamp');
-      const now = new Date();
-      el.textContent = `当前时间：${now.toLocaleString()}`;
-    }
-    updateTimestamp();
-    setInterval(updateTimestamp, 1000);
-
-    // iOS 陀螺仪权限处理
     function requestGyroPermission() {
       if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission().then(state => {
@@ -134,7 +156,6 @@
       }
     }
 
-    // 判断是否显示授权按钮
     window.addEventListener('load', () => {
       if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
         document.getElementById('permissionBtn').style.display = 'block';
